@@ -8,10 +8,10 @@ tags:
   - MATLAB
 authors:
   - name: D. A. Statiou
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0005-9581-2064
     affiliation: 1
   - name: P. Hatzopoulos
-    orcid: 0000-0000-0000-0000
+    
     affiliation: 2
 affiliations:
   - name: Department of Economics, University of ______
