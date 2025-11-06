@@ -2,26 +2,23 @@
 function api = fitcopulatoolbox_allinone(varargin)
 % FITCOPULATOOLBOX_ALLINONE — Single-file Copula Toolbox with Clustering & Mixtures
 % -----------------------------------------------------------------------------
-% GUI για:
-%  - Φόρτωση δεδομένων
-%  - Επιλογή marginals και fit Copula (Gaussian / t / Clayton / Frank / Gumbel)
-%  - Διαγνωστικά (PIT, heatmaps, κ.λπ.)
-%  - Cluster analysis (k-means / GMM / Hierarchical / DBSCAN) πάνω σε X ή U-space
-%  - Ανά cluster fit copula (model selection με BIC)
-%  - Προαιρετικά Mixture-of-copulas (2D) με EM
-%  - Εξαγωγές / Save-Load sessions
-%  - Συμβατό με MATLAB R2023b+
+% GUI for:
+%  - Loading data
+%  - Choosing marginals and fitting a copula (Gaussian / t / Clayton / Frank / Gumbel)
+%  - Diagnostics (PIT, heatmaps, etc.)
+%  - Cluster analysis (k-means / GMM / Hierarchical / DBSCAN) on X- or U-space
+%  - Per-cluster copula fitting (model selection via BIC)
+%  - Optional 2D mixture-of-copulas via EM
+%  - Exports / Save–Load sessions
+%  - Compatible with MATLAB R2023b+
 %
-% Σημείωση: Το παρόν αρχείο συνδυάζει ό,τι χρειάζεται σε μία συνάρτηση αρχείου.
-% Όλες οι βοηθητικές ρουτίνες ορίζονται ως nested subfunctions.
+% Note: This file bundles everything needed into a single function file.
+% All helper routines are defined as nested subfunctions.
 %
-% Συγγραφείς: Statiou D. Anastasios & Hatzopoulos Petros, 2025
-% Άδεια χρήσης: Επιτρεπτή ενσωμάτωση/τροποποίηση με αναφορά.
+% Authors: Statiou D. Anastasios & Hatzopoulos Petros, 2025
+% License: Permitted to integrate/modify with attribution.
 %
 % -----------------------------------------------------------------------------
-
-% FITCOPULATOOLBOX_ALLINONE — Single-file Copula Toolbox with Clustering & Mixtures
-
 % ---- API mode ----
 if nargout >= 1 || (nargin>=1 && ischar(varargin{1}) && strcmpi(varargin{1},'api'))
     api = struct( ...
@@ -150,41 +147,44 @@ chkMix2D = uicheckbox(f,'Position',[120 270 80 24],'Value',false);
 uilabel(f,'Position',[210 270 60 22],'Text','MaxK:');
 edtMixK = uieditfield(f,'numeric','Position',[270 270 80 24],'Value',3,'Limits',[2 8],'RoundFractionalValues',true);
 
-% κουμπιά clustering
-uilabel(f,'Position',[20 260 240 22],'Text','CLUSTERING — actions','FontWeight','bold');
-uibutton(f,'push','Text','Cluster & Fit Copulas','Position',[20 240 160 26], ...
-    'ButtonPushedFcn', @(src,~) runClusterAndFit(src));
+% κουμπιά clustering (μόνο αποστάσεις άλλαξαν)
+uilabel(f,'Position',[20 250 240 22],'Text','CLUSTERING — actions','FontWeight','bold');
 
-% Extra Cluster Analysis buttons (added)
-uibutton(f,'push','Text','Auto K (grid)','Position',[20 180 160 26],...
+% Αριστερή στήλη (ίσο spacing 40px)
+uibutton(f,'push','Text','Cluster & Fit Copulas','Position',[20 220 160 26], ...
+    'ButtonPushedFcn', @(src,~) runClusterAndFit(src));
+uibutton(f,'push','Text','Export Cluster Results','Position',[20 190 160 26], ...
+    'ButtonPushedFcn', @(src,~) exportClusterResults(src));
+uibutton(f,'push','Text','Auto K (grid)','Position',[20 160 160 26],...
     'ButtonPushedFcn', @(src,~) autoKGridDialog(src));
-uibutton(f,'push','Text','DBSCAN ε elbow','Position',[190 90 170 26],...
-    'ButtonPushedFcn', @(src,~) dbscanElbowDialog(src));
-uibutton(f,'push','Text','Outlier Prune (U)','Position',[20 150 160 26],...
+uibutton(f,'push','Text','Outlier Prune (U)','Position',[20 130 160 26],...
     'ButtonPushedFcn', @(src,~) outlierPruneUDialog(src));
-uibutton(f,'push','Text','Per-cluster GOF','Position',[190 150 170 26],...
-    'ButtonPushedFcn', @(src,~) perClusterGOFDialog(src));
-uibutton(f,'push','Text','Feature Importance','Position',[20 120 160 26],...
+uibutton(f,'push','Text','Feature Importance','Position',[20 100 160 26],...
     'ButtonPushedFcn', @(src,~) featureImportanceDialog(src));
-uibutton(f,'push','Text','Export Cluster Report','Position',[190 120 170 26],...
-    'ButtonPushedFcn', @(src,~) exportClusterReport(src));
-uibutton(f,'push','Text','Spectral (Copula CvM)','Position',[20 90 160 26],...
+uibutton(f,'push','Text','Spectral (Copula CvM)','Position',[20 70 160 26],...
     'ButtonPushedFcn', @(src,~) spectralCopulaCvMDialog(src));
 
-uibutton(f,'push','Text','Show Cluster Plots','Position',[190 240 160 26], ...
+% Δεξιά στήλη (ίδιο spacing)
+uibutton(f,'push','Text','Show Cluster Plots','Position',[190 220 160 26], ...
     'ButtonPushedFcn', @(src,~) showClusterPlots(src));
-uibutton(f,'push','Text','Export Cluster Results','Position',[20 210 160 26], ...
-    'ButtonPushedFcn', @(src,~) exportClusterResults(src));
-% extra analysis buttons
-uibutton(f,'push','Text','HSIC Independence','Position',[190 210 170 26], ...
+uibutton(f,'push','Text','HSIC Independence','Position',[190 190 170 26], ...
     'ButtonPushedFcn', @(src,~) hsicTestDialog(src));
-uibutton(f,'push','Text','CoVaR/CoES (2D)','Position',[20 60 160 26], ...
-    'ButtonPushedFcn', @(src,~) covarDialog(src));
-uibutton(f,'push','Text','Cluster Stability','Position',[190 180 160 26], ...
+uibutton(f,'push','Text','Cluster Stability','Position',[190 160 160 26], ...
     'ButtonPushedFcn', @(src,~) clusterStabilityDialog(src));
-uibutton(f,'push','Text','Elbow/Silhouette','Position',[190 60 160 26], ...
+uibutton(f,'push','Text','Per-cluster GOF','Position',[190 130 170 26],...
+    'ButtonPushedFcn', @(src,~) perClusterGOFDialog(src));
+uibutton(f,'push','Text','Export Cluster Report','Position',[190 100 170 26],...
+    'ButtonPushedFcn', @(src,~) exportClusterReport(src));
+uibutton(f,'push','Text','DBSCAN ε elbow','Position',[190 70 170 26],...
+    'ButtonPushedFcn', @(src,~) dbscanElbowDialog(src));
+
+% Προαιρετικά: αν θες και το Elbow/Silhouette σε ξεχωριστή “κάτω σειρά”
+% (για να μην κάθεται πάνω από το Spectral), βάλ’ το λίγο πιο κάτω δεξιά:
+uibutton(f,'push','Text','Elbow/Silhouette','Position',[190 40 160 26], ...
     'ButtonPushedFcn', @(src,~) elbowSilhouette(src));
 
+% ή, αν δεν θες αρνητικό y, άφησέ το στη θέση 20 αλλά θα ευθυγραμμίζεται με το DBSCAN:
+% uibutton(... 'Position',[190 20 160 26], ... )
 
 % Right: axes + output
 ax = uiaxes(f,'Position',[380 140 940 460]); title(ax, 'Correlation Heatmap');
@@ -556,9 +556,9 @@ try, close(splash); end
             case 'Gaussian'
                 R = copulafit('Gaussian', U);
             case 't'
-                [R,nu] = copulafit('t', U); %#ok<NASGU>
+                [R,nu] = copulafit('t', U); 
             otherwise
-                theta = copulafit(fam, U); %#ok<NASGU>
+                theta = copulafit(fam, U); 
         end
         V1 = U(:,1); V2 = nan(size(V1));
         for i=1:size(U,1)
@@ -635,7 +635,7 @@ try, close(splash); end
             legend('tau realized','tau^ (GAS)','(1-\alpha) lo','(1-\alpha) hi','90% lo','90% hi','95% lo','95% hi','Location','best');
             title(sprintf('%s + GAS | W=%d | \alpha=%.2f | cal=%.2f', fam, W, alpha, calFrac)); hold off;
             L = min(50, sum(m)); idx = find(m, L, 'last');
-            fig2 = uifigure('Name','Forecast table','Position',[300 300 720 300]); %#ok<NASGU>
+            fig2 = uifigure('Name','Forecast table','Position',[300 300 720 300]); 
             uitable(fig2,'Data', [num2cell(idx(:)), ...
                                   num2cell(out.tau_real(idx)), num2cell(out.tau_pred(idx)), ...
                                   num2cell(out.loA(idx)), num2cell(out.hiA(idx)), ...
@@ -1054,16 +1054,16 @@ try, close(splash); end
                     logL = sum(log(max(copulapdf('Gaussian', U, R), realmin)));
                     kparams = numel(R(triu(true(size(R)),1)));
                 else
-                    theta = copulafit(fam, U); %#ok<NASGU>
+                    theta = copulafit(fam, U); 
                     logL = sum(log(max(copulapdf(fam, U, theta), realmin)));
                     kparams = 1;
                 end
                 nObs = size(U,1);
                 AIC = -2*logL + 2*kparams;
                 BIC = -2*logL + kparams*log(nObs);
-                results(end+1,:) = {fam, logL, AIC, BIC}; %#ok<AGROW>
+                results(end+1,:) = {fam, logL, AIC, BIC}; 
             catch
-                results(end+1,:) = {families{k}, NaN, NaN, NaN}; %#ok<AGROW>
+                results(end+1,:) = {families{k}, NaN, NaN, NaN}; 
             end
         end
         T = cell2table(results, 'VariableNames', {'Copula','LogL','AIC','BIC'});
@@ -2005,7 +2005,7 @@ end
 function labels = spectralClusterWrapper(DorL, K)
     % Accepts distance matrix D or Laplacian L; detect via symmetry zero-diag
     L = DorL;
-    if all(diag(DorL)==0) && all(all(DorL==DorL.')) && min(DorL(DorL>0))>=0 %#ok<AND2>
+    if all(diag(DorL)==0) && all(all(DorL==DorL.')) && min(DorL(DorL>0))>=0 
         % looks like a distance matrix -> build RBF affinity
         D = DorL; sigma = median(D(D>0)); if ~isfinite(sigma) || sigma<=0, sigma=1; end
         A = exp(-(D.^2)/(2*sigma^2));
